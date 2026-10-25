@@ -33,6 +33,7 @@ class MainActivity : Activity() {
     private var activeTabId = 0
     private var nextTabId = 1
     private var incognito = false
+    private var desktopMode = false
 
     private lateinit var address: EditText
     private lateinit var progress: ProgressBar
@@ -102,6 +103,7 @@ class MainActivity : Activity() {
             setBackgroundColor(dark)
         }
         addTool(tools, "＋ Tab") { createTab("https://www.google.com") }
+        addTool(tools, if (desktopMode) "Desktop ✓" else "Desktop") { toggleDesktopMode() }
         addTool(tools, "☆ Save") { saveBookmark() }
         bookmarkButton = Button(this).apply {
             text = "Bookmarks"
@@ -191,6 +193,7 @@ class MainActivity : Activity() {
         val id = nextTabId++
         val view = WebView(this)
         view.settings.javaScriptEnabled = true
+        view.settings.userAgentString = if (desktopMode) desktopUserAgent() else android.webkit.WebSettings.getDefaultUserAgent(this)
         view.settings.domStorageEnabled = true
         view.settings.loadsImagesAutomatically = true
         view.settings.javaScriptCanOpenWindowsAutomatically = false
@@ -351,6 +354,38 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("Close", null)
             .show()
+    }
+
+    private fun desktopUserAgent(): String =
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
+    private fun toggleDesktopMode() {
+        desktopMode = !desktopMode
+        tabs.forEach { tab ->
+            tab.view.settings.userAgentString = if (desktopMode) desktopUserAgent() else android.webkit.WebSettings.getDefaultUserAgent(this)
+            tab.view.reload()
+        }
+        Toast.makeText(
+            this,
+            if (desktopMode) "Desktop site enabled. Pages are reloading." else "Mobile site enabled. Pages are reloading.",
+            Toast.LENGTH_SHORT
+        ).show()
+        buildUiRefreshDesktopLabel()
+    }
+
+    private fun buildUiRefreshDesktopLabel() {
+        // Rebuild the toolbar label by refreshing the screen controls.
+        // The current toolbar button text is updated in place.
+        val root = (findViewById<View>(android.R.id.content) as? android.view.ViewGroup) ?: return
+        fun visit(view: View) {
+            if (view is Button && (view.text.toString() == "Desktop" || view.text.toString() == "Desktop ✓")) {
+                view.text = if (desktopMode) "Desktop ✓" else "Desktop"
+            }
+            if (view is android.view.ViewGroup) {
+                for (i in 0 until view.childCount) visit(view.getChildAt(i))
+            }
+        }
+        visit(root)
     }
 
     private fun toggleIncognito() {
