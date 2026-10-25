@@ -199,6 +199,10 @@ class MainActivity : Activity() {
         view.settings.displayZoomControls = false
         view.settings.allowFileAccess = false
         view.settings.allowContentAccess = true
+        view.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            view.settings.safeBrowsingEnabled = true
+        }
         if (incognito) {
             view.settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
             view.clearCache(true)
