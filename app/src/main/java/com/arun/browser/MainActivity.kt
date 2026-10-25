@@ -75,7 +75,7 @@ class MainActivity : Activity() {
         header.addView(brand)
         address = EditText(this).apply {
             hint = "Search or enter website"
-            singleLine = true
+            isSingleLine = true
             textSize = 13f
             setTextColor(Color.WHITE)
             setHintTextColor(Color.LTGRAY)
@@ -382,34 +382,40 @@ class MainActivity : Activity() {
     }
 
     private fun showDownloads() {
-        val values = getSharedPreferences("arun_browser", MODE_PRIVATE)
+        val values: List<String> = getSharedPreferences("arun_browser", MODE_PRIVATE)
             .getStringSet("downloads", emptySet())?.toList().orEmpty()
         if (values.isEmpty()) {
             Toast.makeText(this, "No downloads started in this app yet", Toast.LENGTH_SHORT).show()
             return
         }
-        val labels = values.map { it.split("|").getOrElse(1) { it } }.toTypedArray()
-        android.app.AlertDialog.Builder(this)
-            .setTitle("Download history")
-            .setItems(labels) { _, which ->
-                val parts = values[which].split("|", limit = 3)
-                if (parts.size >= 2) {
-                    val id = parts[0].toLongOrNull()
-                    if (id != null) {
-                        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                        try {
-                            startActivity(manager.getUriForDownloadedFile(id)?.let {
-                                android.content.Intent(android.content.Intent.ACTION_VIEW).setDataAndType(it, contentResolver.getType(it))
-                                    .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            } ?: android.content.Intent(DownloadManager.ACTION_VIEW_DOWNLOADS))
-                        } catch (_: Exception) {
-                            startActivity(android.content.Intent(DownloadManager.ACTION_VIEW_DOWNLOADS))
-                        }
+        val labels: Array<String> = values.map { entry ->
+            entry.split("|").getOrNull(1) ?: entry
+        }.toTypedArray()
+        val builder = android.app.AlertDialog.Builder(this)
+        builder.setTitle("Download history")
+        builder.setItems(labels, android.content.DialogInterface.OnClickListener { _, which ->
+            val parts = values[which].split("|", limit = 3)
+            val id = parts.firstOrNull()?.toLongOrNull()
+            if (id != null) {
+                val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                try {
+                    val uri = manager.getUriForDownloadedFile(id)
+                    if (uri != null) {
+                        startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW)
+                                .setDataAndType(uri, contentResolver.getType(uri))
+                                .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        )
+                    } else {
+                        startActivity(android.content.Intent(DownloadManager.ACTION_VIEW_DOWNLOADS))
                     }
+                } catch (_: Exception) {
+                    startActivity(android.content.Intent(DownloadManager.ACTION_VIEW_DOWNLOADS))
                 }
             }
-            .setNegativeButton("Close", null)
-            .show()
+        })
+        builder.setNegativeButton("Close", null)
+        builder.show()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
